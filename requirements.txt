@@ -1,0 +1,12 @@
+Flask
+openai
+requests
+python-dotenv
+Flask-CORS
+gunicorn
+Werkzeug
+Jinja2
+MarkupSafe
+itsdangerous
+click
+blinker 
