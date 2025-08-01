@@ -4,7 +4,7 @@ A production-ready travel recommender web application that combines the power of
 
 ## 🚀 Features
 
-- **AI-Powered Recommendations**: Uses GPT-4 to generate personalized travel recommendations
+- **AI-Powered Recommendations**: Uses GPT-4o-mini to generate personalized travel recommendations
 - **Qloo Taste AI Integration**: Leverages Qloo's API for restaurant and food recommendations
 - **Modern UI/UX**: Beautiful, responsive design with smooth animations
 - **Comprehensive Travel Guide**: Includes food, experiences, hidden gems, and travel tips
@@ -168,7 +168,7 @@ This project is created for the Qloo API hackathon.
 
 ## 🙏 Acknowledgments
 
-- OpenAI for GPT-4 API
+- OpenAI for GPT-4o-mini API
 - Qloo for Taste AI API
 - Font Awesome for icons
 - Google Fonts for typography
