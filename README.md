@@ -15,7 +15,7 @@ A production-ready travel recommender web application that combines the power of
 
 - **Backend**: Python Flask
 - **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
-- **AI**: OpenAI GPT-4
+- **AI**: OpenAI GPT-4o-mini
 - **API Integration**: Qloo Taste AI API
 - **Styling**: Custom CSS with modern design patterns
 - **Icons**: Font Awesome
