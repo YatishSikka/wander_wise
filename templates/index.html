@@ -509,50 +509,6 @@
                     
                     html += '</div>';
                 }
-                
-                // Bars from Qloo
-                if (qlooData.bars && !qlooData.bars.error && qlooData.bars.results && qlooData.bars.results.length > 0) {
-                    html += `
-                        <div class="recommendation-section">
-                            <h3><i class="fas fa-glass-martini"></i> Qloo AI Bar & Nightlife Recommendations (${qlooData.bars.results.length} recommendations)</h3>
-                    `;
-                    
-                    qlooData.bars.results.forEach(bar => {
-                        html += `
-                            <div class="recommendation-item">
-                                <h4>${bar.name || 'Bar'}</h4>
-                                <p><strong>Category:</strong> ${bar.category || 'Bar'}</p>
-                                <p><strong>Location:</strong> ${bar.location || 'Location not specified'}</p>
-                                ${bar.description ? `<p>${bar.description}</p>` : ''}
-                                ${bar.rating ? `<p><strong>Rating:</strong> ${bar.rating}</p>` : ''}
-                            </div>
-                        `;
-                    });
-                    
-                    html += '</div>';
-                }
-                
-                // Cafes from Qloo
-                if (qlooData.cafes && !qlooData.cafes.error && qlooData.cafes.results && qlooData.cafes.results.length > 0) {
-                    html += `
-                        <div class="recommendation-section">
-                            <h3><i class="fas fa-coffee"></i> Qloo AI Cafe Recommendations (${qlooData.cafes.results.length} recommendations)</h3>
-                    `;
-                    
-                    qlooData.cafes.results.forEach(cafe => {
-                        html += `
-                            <div class="recommendation-item">
-                                <h4>${cafe.name || 'Cafe'}</h4>
-                                <p><strong>Category:</strong> ${cafe.category || 'Cafe'}</p>
-                                <p><strong>Location:</strong> ${cafe.location || 'Location not specified'}</p>
-                                ${cafe.description ? `<p>${cafe.description}</p>` : ''}
-                                ${cafe.rating ? `<p><strong>Rating:</strong> ${cafe.rating}</p>` : ''}
-                            </div>
-                        `;
-                    });
-                    
-                    html += '</div>';
-                }
             }
             
             // Experience Recommendations

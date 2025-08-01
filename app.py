@@ -31,6 +31,9 @@ class TravelRecommender:
             "Content-Type": "application/json"
         }
         
+        # Set timeout to prevent hanging requests
+        timeout = 10
+        
         # Search for the location first
         search_url = f"{QLOO_BASE_URL}/search"
         search_params = {
@@ -39,7 +42,7 @@ class TravelRecommender:
         }
         
         try:
-            search_response = requests.get(search_url, headers=headers, params=search_params)
+            search_response = requests.get(search_url, headers=headers, params=search_params, timeout=timeout)
             search_response.raise_for_status()
             search_data = search_response.json()
             
@@ -54,10 +57,10 @@ class TravelRecommender:
             rec_params = {
                 "entity_id": location_id,
                 "category": category,
-                "limit": 20
+                "limit": 10
             }
             
-            rec_response = requests.get(rec_url, headers=headers, params=rec_params)
+            rec_response = requests.get(rec_url, headers=headers, params=rec_params, timeout=timeout)
             rec_response.raise_for_status()
             rec_data = rec_response.json()
             
@@ -74,7 +77,7 @@ class TravelRecommender:
         Travel Duration: {duration}
         Preferences: {preferences}
         
-        Please provide recommendations in the following JSON format with AT LEAST 8-12 recommendations in each category:
+        Please provide recommendations in the following JSON format with 5-8 recommendations in each category:
         {{
             "destination_info": {{
                 "name": "{location}",
@@ -120,7 +123,7 @@ class TravelRecommender:
             ]
         }}
         
-        Make sure the recommendations are specific to {location} and consider the user's preferences and duration. Focus on authentic local experiences and must-try items. Provide a comprehensive list with at least 8-12 recommendations in each category (food_recommendations, experience_recommendations, hidden_gems) to give users plenty of options to choose from.
+        Make sure the recommendations are specific to {location} and consider the user's preferences and duration. Focus on authentic local experiences and must-try items. Provide 5-8 recommendations in each category to ensure fast response times.
         """
         
         try:
@@ -131,7 +134,7 @@ class TravelRecommender:
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
-                max_tokens=4000
+                max_tokens=2000
             )
             
             # Parse the JSON response
@@ -171,20 +174,12 @@ def get_recommendations():
         # Get GPT recommendations
         gpt_recommendations = recommender.get_gpt_recommendations(location, preferences, duration)
         
-        # Get Qloo recommendations for restaurants
+        # Get Qloo recommendations for restaurants only (to avoid timeout)
         qloo_restaurants = recommender.get_qloo_recommendations(location, "restaurants")
         
-        # Get Qloo recommendations for bars/nightlife
-        qloo_bars = recommender.get_qloo_recommendations(location, "bars")
-        
-        # Get Qloo recommendations for cafes
-        qloo_cafes = recommender.get_qloo_recommendations(location, "cafes")
-        
-        # Combine all Qloo recommendations
+        # Combine Qloo recommendations
         qloo_recommendations = {
-            "restaurants": qloo_restaurants,
-            "bars": qloo_bars,
-            "cafes": qloo_cafes
+            "restaurants": qloo_restaurants
         }
         
         # Combine recommendations
@@ -218,7 +213,7 @@ def qloo_search():
             "category": "cities"
         }
         
-        response = requests.get(search_url, headers=headers, params=search_params)
+        response = requests.get(search_url, headers=headers, params=search_params, timeout=10)
         response.raise_for_status()
         
         return jsonify(response.json())
