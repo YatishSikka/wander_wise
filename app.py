@@ -6,6 +6,8 @@ import os
 from dotenv import load_dotenv
 import json
 from datetime import datetime
+import signal
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -170,13 +172,46 @@ def get_recommendations():
             "restaurants": qloo_restaurants
         }
         
-        # Try GPT with shorter timeout
-        try:
-            gpt_recommendations = recommender.get_gpt_recommendations(location, preferences, duration)
-        except Exception as e:
-            # If GPT fails, return fallback recommendations
+        # Try GPT with aggressive timeout (15 seconds max)
+        gpt_recommendations = None
+        gpt_error = None
+        
+        def gpt_call():
+            nonlocal gpt_recommendations, gpt_error
+            try:
+                gpt_recommendations = recommender.get_gpt_recommendations(location, preferences, duration)
+            except Exception as e:
+                gpt_error = str(e)
+        
+        # Run GPT in a thread with timeout
+        gpt_thread = threading.Thread(target=gpt_call)
+        gpt_thread.daemon = True
+        gpt_thread.start()
+        gpt_thread.join(timeout=15)  # 15 second timeout
+        
+        if gpt_thread.is_alive():
+            # GPT is taking too long, use fallback
             gpt_recommendations = {
-                "error": f"GPT API temporarily unavailable: {str(e)}",
+                "error": "GPT API timeout - using fallback recommendations",
+                "destination_info": {
+                    "name": location,
+                    "best_time_to_visit": "Check local tourism websites",
+                    "weather_info": "Check weather apps for current conditions",
+                    "cultural_highlights": "Explore local attractions and museums"
+                },
+                "food_recommendations": [],
+                "experience_recommendations": [],
+                "hidden_gems": [],
+                "travel_tips": [
+                    "Always check local tourism websites for the latest information",
+                    "Consider booking popular attractions in advance",
+                    "Learn a few basic phrases in the local language"
+                ]
+            }
+        elif gpt_error:
+            # GPT failed with error
+            gpt_recommendations = {
+                "error": f"GPT API error: {gpt_error}",
                 "destination_info": {
                     "name": location,
                     "best_time_to_visit": "Check local tourism websites",
