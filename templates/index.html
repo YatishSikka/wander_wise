@@ -454,6 +454,15 @@
                             <p><small>Technical details: ${gptData.error}</small></p>
                         </div>
                     `;
+                } else if (gptData.error.includes('not found') || gptData.error.includes('Location')) {
+                    html += `
+                        <div class="error-message">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <strong>Location Not Found</strong>
+                            <p>We couldn't find "${location}". Please check the spelling or try a different city name.</p>
+                            <p><small>Technical details: ${gptData.error}</small></p>
+                        </div>
+                    `;
                 } else {
                     html += `
                         <div class="error-message">

@@ -27,7 +27,7 @@ class TravelRecommender:
         self.openai_client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
     
     def get_qloo_recommendations(self, location, category="restaurants"):
-        """Get recommendations from Qloo Taste AI API"""
+        """Get recommendations from Qloo Taste AI API with retry logic"""
         headers = {
             "Authorization": f"Bearer {QLOO_API_KEY}",
             "Content-Type": "application/json"
@@ -36,40 +36,53 @@ class TravelRecommender:
         # Set timeout to prevent hanging requests
         timeout = 10
         
-        # Search for the location first
-        search_url = f"{QLOO_BASE_URL}/search"
-        search_params = {
-            "query": location,
-            "category": "cities"
-        }
-        
-        try:
-            search_response = requests.get(search_url, headers=headers, params=search_params, timeout=timeout)
-            search_response.raise_for_status()
-            search_data = search_response.json()
-            
-            if not search_data.get('results'):
-                return {"error": f"Location '{location}' not found"}
-            
-            # Get the first result (most relevant)
-            location_id = search_data['results'][0]['id']
-            
-            # Get recommendations for the location
-            rec_url = f"{QLOO_BASE_URL}/recommendations"
-            rec_params = {
-                "entity_id": location_id,
-                "category": category,
-                "limit": 10
-            }
-            
-            rec_response = requests.get(rec_url, headers=headers, params=rec_params, timeout=timeout)
-            rec_response.raise_for_status()
-            rec_data = rec_response.json()
-            
-            return rec_data
-            
-        except requests.exceptions.RequestException as e:
-            return {"error": f"Qloo API error: {str(e)}"}
+        # Retry logic for intermittent issues
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                # Search for the location first
+                search_url = f"{QLOO_BASE_URL}/search"
+                search_params = {
+                    "query": location,
+                    "category": "cities"
+                }
+                
+                search_response = requests.get(search_url, headers=headers, params=search_params, timeout=timeout)
+                search_response.raise_for_status()
+                search_data = search_response.json()
+                
+                if not search_data.get('results'):
+                    return {"error": f"Location '{location}' not found. Please check the spelling or try a different city name."}
+                
+                # Get the first result (most relevant)
+                location_id = search_data['results'][0]['id']
+                
+                # Get recommendations for the location
+                rec_url = f"{QLOO_BASE_URL}/recommendations"
+                rec_params = {
+                    "entity_id": location_id,
+                    "category": category,
+                    "limit": 10
+                }
+                
+                rec_response = requests.get(rec_url, headers=headers, params=rec_params, timeout=timeout)
+                rec_response.raise_for_status()
+                rec_data = rec_response.json()
+                
+                return rec_data
+                
+            except requests.exceptions.RequestException as e:
+                error_msg = str(e)
+                if attempt < max_retries - 1:  # Don't retry on last attempt
+                    continue  # Retry
+                else:
+                    # Final attempt failed
+                    if "401" in error_msg:
+                        return {"error": "Qloo API temporarily unavailable (rate limit or service issue). Please try again in a few moments."}
+                    elif "timeout" in error_msg.lower():
+                        return {"error": "Qloo API request timed out. Please try again."}
+                    else:
+                        return {"error": f"Qloo API error: {error_msg}"}
     
     def get_gpt_recommendations(self, location, preferences, duration):
         """Get personalized recommendations using GPT"""
