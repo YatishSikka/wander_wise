@@ -34,7 +34,7 @@ class TravelRecommender:
         }
         
         # Set timeout to prevent hanging requests
-        timeout = 10
+        timeout = 20  # 20 second timeout for HTTP requests
         
         # Retry logic for intermittent issues
         max_retries = 2
@@ -98,7 +98,7 @@ class TravelRecommender:
         prompt = f"""
         Provide quick travel tips for {location}. Duration: {duration}. Preferences: {preferences}.
         
-        Return JSON with 2-3 items per category:
+        Return JSON with 5 items per category:
         {{
             "destination_info": {{
                 "name": "{location}",
@@ -134,7 +134,7 @@ class TravelRecommender:
                     "location": "location"
                 }}
             ],
-            "travel_tips": ["tip1", "tip2", "tip3"]
+            "travel_tips": ["tip1", "tip2", "tip3", "tip4", "tip5"]
         }}
         
         Keep responses concise and specific to {location}.
@@ -151,7 +151,7 @@ class TravelRecommender:
                         {"role": "user", "content": prompt}
                     ],
                     temperature=0.5,
-                    max_tokens=800,
+                    max_tokens=1200,  # Increased for 5 recommendations
                     timeout=15  # Increased timeout for each attempt
                 )
                 
@@ -227,7 +227,7 @@ def get_recommendations():
         qloo_thread = threading.Thread(target=qloo_call)
         qloo_thread.daemon = True
         qloo_thread.start()
-        qloo_thread.join(timeout=10)  # 10 second timeout (matching Qloo function timeout)
+        qloo_thread.join(timeout=25)  # 25 second timeout (allowing extra time for Qloo)
         
         if gpt_thread.is_alive():
             # GPT is taking too long, use comprehensive fallback
@@ -255,6 +255,30 @@ def get_recommendations():
                         "price_range": "Mid-range",
                         "must_try_dishes": ["Signature dishes", "Local specialties"],
                         "location": "City center and popular districts"
+                    },
+                    {
+                        "name": "Fine Dining Experience",
+                        "cuisine": "Upscale local cuisine",
+                        "description": "Splurge on a high-end restaurant to experience the best of local culinary traditions.",
+                        "price_range": "Luxury",
+                        "must_try_dishes": ["Chef's special", "Local wine pairings"],
+                        "location": "Upscale districts"
+                    },
+                    {
+                        "name": "Café Culture",
+                        "cuisine": "Coffee and light fare",
+                        "description": "Experience local café culture with coffee, pastries, and light meals.",
+                        "price_range": "Budget-friendly",
+                        "must_try_dishes": ["Local coffee", "Fresh pastries"],
+                        "location": "Café districts"
+                    },
+                    {
+                        "name": "Market Food Stalls",
+                        "cuisine": "Street food and snacks",
+                        "description": "Explore food stalls in local markets for quick, authentic bites.",
+                        "price_range": "Budget-friendly",
+                        "must_try_dishes": ["Market specialties", "Fresh produce"],
+                        "location": "Local markets"
                     }
                 ],
                 "experience_recommendations": [
