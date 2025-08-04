@@ -94,7 +94,7 @@ class TravelRecommender:
                         return {"error": f"Qloo API error: {error_msg}"}
     
     def get_gpt_recommendations(self, location, preferences, duration):
-        """Get personalized recommendations using GPT"""
+        """Get personalized recommendations using GPT with retry logic"""
         prompt = f"""
         Provide quick travel tips for {location}. Duration: {duration}. Preferences: {preferences}.
         
@@ -140,31 +140,37 @@ class TravelRecommender:
         Keep responses concise and specific to {location}.
         """
         
-        try:
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a travel expert. Respond with valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.5,
-                max_tokens=800,
-                timeout=10
-            )
-            
-            # Parse the JSON response
-            content = response.choices[0].message.content
-            # Clean up the response to ensure it's valid JSON
-            content = content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            
-            return json.loads(content)
-            
-        except Exception as e:
-            return {"error": f"GPT API error: {str(e)}"}
+        # Retry logic for GPT calls
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a travel expert. Respond with valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.5,
+                    max_tokens=800,
+                    timeout=15  # Increased timeout for each attempt
+                )
+                
+                # Parse the JSON response
+                content = response.choices[0].message.content
+                # Clean up the response to ensure it's valid JSON
+                content = content.strip()
+                if content.startswith("```json"):
+                    content = content[7:]
+                if content.endswith("```"):
+                    content = content[:-3]
+                
+                return json.loads(content)
+                
+            except Exception as e:
+                if attempt < max_retries - 1:  # Don't retry on last attempt
+                    continue  # Retry
+                else:
+                    return {"error": f"GPT API error: {str(e)}"}
 
 # Initialize the recommender
 recommender = TravelRecommender()
@@ -201,7 +207,7 @@ def get_recommendations():
         gpt_thread = threading.Thread(target=gpt_call)
         gpt_thread.daemon = True
         gpt_thread.start()
-        gpt_thread.join(timeout=15)  # 15 second timeout
+        gpt_thread.join(timeout=20)  # 20 second timeout (increased from 15s)
         
         # Then try Qloo (supplementary restaurant data)
         qloo_recommendations = None
@@ -221,44 +227,132 @@ def get_recommendations():
         qloo_thread = threading.Thread(target=qloo_call)
         qloo_thread.daemon = True
         qloo_thread.start()
-        qloo_thread.join(timeout=10)  # 10 second timeout
+        qloo_thread.join(timeout=8)  # 8 second timeout (reduced to keep total under 30s)
         
         if gpt_thread.is_alive():
-            # GPT is taking too long, use fallback
+            # GPT is taking too long, use comprehensive fallback
             gpt_recommendations = {
                 "error": "AI recommendations temporarily unavailable - using fallback recommendations",
                 "destination_info": {
                     "name": location,
-                    "best_time_to_visit": "Check local tourism websites",
-                    "weather_info": "Check weather apps for current conditions",
-                    "cultural_highlights": "Explore local attractions and museums"
+                    "best_time_to_visit": "Spring (March-May) and Fall (September-November) are generally the best times to visit most destinations. Check local tourism websites for specific seasonal events.",
+                    "weather_info": "Check weather apps for current conditions. Pack layers for unpredictable weather changes.",
+                    "cultural_highlights": "Explore local museums, historical sites, and cultural districts. Visit during local festivals for authentic experiences."
                 },
-                "food_recommendations": [],
-                "experience_recommendations": [],
-                "hidden_gems": [],
+                "food_recommendations": [
+                    {
+                        "name": "Local Street Food",
+                        "cuisine": "Local specialties",
+                        "description": "Try street food vendors for authentic local flavors and budget-friendly dining options.",
+                        "price_range": "Budget-friendly",
+                        "must_try_dishes": ["Local street food", "Traditional dishes"],
+                        "location": "Street markets and food districts"
+                    },
+                    {
+                        "name": "Popular Local Restaurant",
+                        "cuisine": "Regional cuisine",
+                        "description": "Visit well-reviewed local restaurants to experience traditional cooking methods and regional specialties.",
+                        "price_range": "Mid-range",
+                        "must_try_dishes": ["Signature dishes", "Local specialties"],
+                        "location": "City center and popular districts"
+                    }
+                ],
+                "experience_recommendations": [
+                    {
+                        "name": "City Walking Tour",
+                        "category": "Cultural",
+                        "description": "Explore the city on foot to discover hidden gems and local neighborhoods.",
+                        "duration": "2-3 hours",
+                        "best_time": "Morning or late afternoon",
+                        "tips": "Wear comfortable shoes and bring water"
+                    },
+                    {
+                        "name": "Local Market Visit",
+                        "category": "Cultural",
+                        "description": "Visit local markets to experience daily life and find unique souvenirs.",
+                        "duration": "1-2 hours",
+                        "best_time": "Morning for fresh produce",
+                        "tips": "Bargain politely and try local snacks"
+                    }
+                ],
+                "hidden_gems": [
+                    {
+                        "name": "Local Neighborhood",
+                        "type": "Cultural district",
+                        "description": "Explore residential areas away from tourist centers for authentic local experiences.",
+                        "location": "Residential districts"
+                    }
+                ],
                 "travel_tips": [
-                    "Always check local tourism websites for the latest information",
-                    "Consider booking popular attractions in advance",
-                    "Learn a few basic phrases in the local language"
+                    "Always check local tourism websites for the latest information and current events",
+                    "Consider booking popular attractions in advance to avoid long queues",
+                    "Learn a few basic phrases in the local language - locals appreciate the effort",
+                    "Use public transportation to experience the city like a local",
+                    "Ask hotel staff or locals for restaurant recommendations",
+                    "Keep emergency contact numbers and embassy information handy"
                 ]
             }
         elif gpt_error:
-            # GPT failed with error
+            # GPT failed with error, use comprehensive fallback
             gpt_recommendations = {
                 "error": f"GPT API error: {gpt_error}",
                 "destination_info": {
                     "name": location,
-                    "best_time_to_visit": "Check local tourism websites",
-                    "weather_info": "Check weather apps for current conditions",
-                    "cultural_highlights": "Explore local attractions and museums"
+                    "best_time_to_visit": "Spring (March-May) and Fall (September-November) are generally the best times to visit most destinations. Check local tourism websites for specific seasonal events.",
+                    "weather_info": "Check weather apps for current conditions. Pack layers for unpredictable weather changes.",
+                    "cultural_highlights": "Explore local museums, historical sites, and cultural districts. Visit during local festivals for authentic experiences."
                 },
-                "food_recommendations": [],
-                "experience_recommendations": [],
-                "hidden_gems": [],
+                "food_recommendations": [
+                    {
+                        "name": "Local Street Food",
+                        "cuisine": "Local specialties",
+                        "description": "Try street food vendors for authentic local flavors and budget-friendly dining options.",
+                        "price_range": "Budget-friendly",
+                        "must_try_dishes": ["Local street food", "Traditional dishes"],
+                        "location": "Street markets and food districts"
+                    },
+                    {
+                        "name": "Popular Local Restaurant",
+                        "cuisine": "Regional cuisine",
+                        "description": "Visit well-reviewed local restaurants to experience traditional cooking methods and regional specialties.",
+                        "price_range": "Mid-range",
+                        "must_try_dishes": ["Signature dishes", "Local specialties"],
+                        "location": "City center and popular districts"
+                    }
+                ],
+                "experience_recommendations": [
+                    {
+                        "name": "City Walking Tour",
+                        "category": "Cultural",
+                        "description": "Explore the city on foot to discover hidden gems and local neighborhoods.",
+                        "duration": "2-3 hours",
+                        "best_time": "Morning or late afternoon",
+                        "tips": "Wear comfortable shoes and bring water"
+                    },
+                    {
+                        "name": "Local Market Visit",
+                        "category": "Cultural",
+                        "description": "Visit local markets to experience daily life and find unique souvenirs.",
+                        "duration": "1-2 hours",
+                        "best_time": "Morning for fresh produce",
+                        "tips": "Bargain politely and try local snacks"
+                    }
+                ],
+                "hidden_gems": [
+                    {
+                        "name": "Local Neighborhood",
+                        "type": "Cultural district",
+                        "description": "Explore residential areas away from tourist centers for authentic local experiences.",
+                        "location": "Residential districts"
+                    }
+                ],
                 "travel_tips": [
-                    "Always check local tourism websites for the latest information",
-                    "Consider booking popular attractions in advance",
-                    "Learn a few basic phrases in the local language"
+                    "Always check local tourism websites for the latest information and current events",
+                    "Consider booking popular attractions in advance to avoid long queues",
+                    "Learn a few basic phrases in the local language - locals appreciate the effort",
+                    "Use public transportation to experience the city like a local",
+                    "Ask hotel staff or locals for restaurant recommendations",
+                    "Keep emergency contact numbers and embassy information handy"
                 ]
             }
         
@@ -295,17 +389,61 @@ def get_recommendations():
                 "error": f"Server temporarily unavailable: {str(e)}",
                 "destination_info": {
                     "name": location,
-                    "best_time_to_visit": "Check local tourism websites",
-                    "weather_info": "Check weather apps for current conditions",
-                    "cultural_highlights": "Explore local attractions and museums"
+                    "best_time_to_visit": "Spring (March-May) and Fall (September-November) are generally the best times to visit most destinations. Check local tourism websites for specific seasonal events.",
+                    "weather_info": "Check weather apps for current conditions. Pack layers for unpredictable weather changes.",
+                    "cultural_highlights": "Explore local museums, historical sites, and cultural districts. Visit during local festivals for authentic experiences."
                 },
-                "food_recommendations": [],
-                "experience_recommendations": [],
-                "hidden_gems": [],
+                "food_recommendations": [
+                    {
+                        "name": "Local Street Food",
+                        "cuisine": "Local specialties",
+                        "description": "Try street food vendors for authentic local flavors and budget-friendly dining options.",
+                        "price_range": "Budget-friendly",
+                        "must_try_dishes": ["Local street food", "Traditional dishes"],
+                        "location": "Street markets and food districts"
+                    },
+                    {
+                        "name": "Popular Local Restaurant",
+                        "cuisine": "Regional cuisine",
+                        "description": "Visit well-reviewed local restaurants to experience traditional cooking methods and regional specialties.",
+                        "price_range": "Mid-range",
+                        "must_try_dishes": ["Signature dishes", "Local specialties"],
+                        "location": "City center and popular districts"
+                    }
+                ],
+                "experience_recommendations": [
+                    {
+                        "name": "City Walking Tour",
+                        "category": "Cultural",
+                        "description": "Explore the city on foot to discover hidden gems and local neighborhoods.",
+                        "duration": "2-3 hours",
+                        "best_time": "Morning or late afternoon",
+                        "tips": "Wear comfortable shoes and bring water"
+                    },
+                    {
+                        "name": "Local Market Visit",
+                        "category": "Cultural",
+                        "description": "Visit local markets to experience daily life and find unique souvenirs.",
+                        "duration": "1-2 hours",
+                        "best_time": "Morning for fresh produce",
+                        "tips": "Bargain politely and try local snacks"
+                    }
+                ],
+                "hidden_gems": [
+                    {
+                        "name": "Local Neighborhood",
+                        "type": "Cultural district",
+                        "description": "Explore residential areas away from tourist centers for authentic local experiences.",
+                        "location": "Residential districts"
+                    }
+                ],
                 "travel_tips": [
-                    "Always check local tourism websites for the latest information",
-                    "Consider booking popular attractions in advance",
-                    "Learn a few basic phrases in the local language"
+                    "Always check local tourism websites for the latest information and current events",
+                    "Consider booking popular attractions in advance to avoid long queues",
+                    "Learn a few basic phrases in the local language - locals appreciate the effort",
+                    "Use public transportation to experience the city like a local",
+                    "Ask hotel staff or locals for restaurant recommendations",
+                    "Keep emergency contact numbers and embassy information handy"
                 ]
             },
             "qloo_recommendations": {
