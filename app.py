@@ -54,8 +54,17 @@ class TravelRecommender:
                 if not search_data.get('results'):
                     return {"error": f"Location '{location}' not found. Please check the spelling or try a different city name."}
                 
+                # Validate that the search result is actually relevant
+                first_result = search_data['results'][0]
+                search_result_name = first_result.get('name', '').lower()
+                user_input = location.lower().strip()
+                
+                # Check if the search result is too generic or doesn't match well
+                if len(user_input) < 3 or (len(user_input) < 5 and not search_result_name.startswith(user_input)):
+                    return {"error": f"'{location}' is too vague. Please enter a more specific city name (e.g., 'Tokyo' instead of 'T')."}
+                
                 # Get the first result (most relevant)
-                location_id = search_data['results'][0]['id']
+                location_id = first_result['id']
                 
                 # Get recommendations for the location
                 rec_url = f"{QLOO_BASE_URL}/recommendations"
@@ -205,7 +214,7 @@ def get_recommendations():
         if gpt_thread.is_alive():
             # GPT is taking too long, use fallback
             gpt_recommendations = {
-                "error": "Qloo API temporarily unavailable - using fallback recommendations",
+                "error": "AI recommendations temporarily unavailable - using fallback recommendations",
                 "destination_info": {
                     "name": location,
                     "best_time_to_visit": "Check local tourism websites",
