@@ -186,15 +186,7 @@ def get_recommendations():
         if not location:
             return jsonify({"error": "Location is required"}), 400
         
-        # Get Qloo recommendations first (faster)
-        qloo_restaurants = recommender.get_qloo_recommendations(location, "restaurants")
-        
-        # Combine Qloo recommendations
-        qloo_recommendations = {
-            "restaurants": qloo_restaurants
-        }
-        
-        # Try GPT with aggressive timeout (15 seconds max)
+        # Try GPT first (more important - AI recommendations)
         gpt_recommendations = None
         gpt_error = None
         
@@ -210,6 +202,26 @@ def get_recommendations():
         gpt_thread.daemon = True
         gpt_thread.start()
         gpt_thread.join(timeout=15)  # 15 second timeout
+        
+        # Then try Qloo (supplementary restaurant data)
+        qloo_recommendations = None
+        qloo_error = None
+        
+        def qloo_call():
+            nonlocal qloo_recommendations, qloo_error
+            try:
+                qloo_restaurants = recommender.get_qloo_recommendations(location, "restaurants")
+                qloo_recommendations = {
+                    "restaurants": qloo_restaurants
+                }
+            except Exception as e:
+                qloo_error = str(e)
+        
+        # Run Qloo in a thread with timeout
+        qloo_thread = threading.Thread(target=qloo_call)
+        qloo_thread.daemon = True
+        qloo_thread.start()
+        qloo_thread.join(timeout=10)  # 10 second timeout
         
         if gpt_thread.is_alive():
             # GPT is taking too long, use fallback
@@ -250,6 +262,23 @@ def get_recommendations():
                 ]
             }
         
+        # Handle Qloo results
+        if qloo_thread.is_alive():
+            # Qloo is taking too long, use fallback
+            qloo_recommendations = {
+                "restaurants": {"error": "Qloo API temporarily unavailable - restaurant recommendations not available"}
+            }
+        elif qloo_error:
+            # Qloo failed with error
+            qloo_recommendations = {
+                "restaurants": {"error": f"Qloo API error: {qloo_error}"}
+            }
+        elif not qloo_recommendations:
+            # Qloo didn't return anything
+            qloo_recommendations = {
+                "restaurants": {"error": "Unable to fetch restaurant recommendations"}
+            }
+        
         # Combine recommendations
         combined_recommendations = {
             "gpt_recommendations": gpt_recommendations,
@@ -280,7 +309,7 @@ def get_recommendations():
                 ]
             },
             "qloo_recommendations": {
-                "restaurants": {"error": "Unable to fetch restaurant recommendations"}
+                "restaurants": {"error": "Qloo API temporarily unavailable - restaurant recommendations not available"}
             },
             "generated_at": datetime.now().isoformat()
         }), 500

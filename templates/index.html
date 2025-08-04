@@ -597,6 +597,17 @@
                         </div>
                     `;
                 }
+                // Check for Qloo API errors (but still show GPT results)
+                else if (qlooData.restaurants && qlooData.restaurants.error) {
+                    html += `
+                        <div class="partial-success-message">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Restaurant Recommendations Unavailable</strong>
+                            <p>AI recommendations are available above, but restaurant data is temporarily unavailable.</p>
+                            <p><small>Technical details: ${qlooData.restaurants.error}</small></p>
+                        </div>
+                    `;
+                }
                 // Restaurants from Qloo
                 else if (qlooData.restaurants && !qlooData.restaurants.error && qlooData.restaurants.results && qlooData.restaurants.results.length > 0) {
                     html += `
