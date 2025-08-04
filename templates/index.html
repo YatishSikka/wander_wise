@@ -586,8 +586,19 @@
             if (data.qloo_recommendations) {
                 const qlooData = data.qloo_recommendations;
                 
+                // Check for location not found error in Qloo data
+                if (qlooData.restaurants && qlooData.restaurants.error && qlooData.restaurants.error.includes('not found')) {
+                    html += `
+                        <div class="error-message">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <strong>Location Not Found</strong>
+                            <p>We couldn't find "${location}". Please check the spelling or try a different city name.</p>
+                            <p><small>Technical details: ${qlooData.restaurants.error}</small></p>
+                        </div>
+                    `;
+                }
                 // Restaurants from Qloo
-                if (qlooData.restaurants && !qlooData.restaurants.error && qlooData.restaurants.results && qlooData.restaurants.results.length > 0) {
+                else if (qlooData.restaurants && !qlooData.restaurants.error && qlooData.restaurants.results && qlooData.restaurants.results.length > 0) {
                     html += `
                         <div class="recommendation-section">
                             <h3><i class="fas fa-star"></i> Qloo AI Restaurant Recommendations (${qlooData.restaurants.results.length} recommendations)</h3>
