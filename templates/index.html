@@ -441,59 +441,139 @@
             const resultsSection = document.getElementById('resultsSection');
             const gptData = data.gpt_recommendations;
             
+            let html = '';
+            
+            // Show error message if GPT failed, but don't return early
             if (gptData.error) {
-                showError(gptData.error);
-                return;
-            }
-            
-            let html = `
-                <div class="destination-header">
-                    <h2><i class="fas fa-map-marker-alt"></i> ${location}</h2>
-                    <p>Your personalized travel guide</p>
-                </div>
-                
-                <div class="destination-info">
-                    <div class="info-card">
-                        <h3><i class="fas fa-clock"></i> Best Time to Visit</h3>
-                        <p>${gptData.destination_info?.best_time_to_visit || 'Information not available'}</p>
-                    </div>
-                    <div class="info-card">
-                        <h3><i class="fas fa-cloud-sun"></i> Weather Info</h3>
-                        <p>${gptData.destination_info?.weather_info || 'Information not available'}</p>
-                    </div>
-                    <div class="info-card">
-                        <h3><i class="fas fa-landmark"></i> Cultural Highlights</h3>
-                        <p>${gptData.destination_info?.cultural_highlights || 'Information not available'}</p>
-                    </div>
-                </div>
-            `;
-            
-            // Food Recommendations
-            if (gptData.food_recommendations && gptData.food_recommendations.length > 0) {
+                if (gptData.error.includes('GPT API timeout') || gptData.error.includes('fallback')) {
+                    html += `
+                        <div class="partial-success-message">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Partial Results Available</strong>
+                            <p>Some AI recommendations are temporarily unavailable, but you still have access to restaurant recommendations below.</p>
+                            <p><small>Technical details: ${gptData.error}</small></p>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Service Temporarily Unavailable</strong>
+                            <p>We're experiencing high demand. Please try again in a few moments.</p>
+                            <p><small>Technical details: ${gptData.error}</small></p>
+                        </div>
+                    `;
+                }
+            } else {
+                // Show destination header only if GPT worked
                 html += `
-                    <div class="recommendation-section">
-                        <h3><i class="fas fa-utensils"></i> Must-Try Food & Restaurants (${gptData.food_recommendations.length} recommendations)</h3>
+                    <div class="destination-header">
+                        <h2><i class="fas fa-map-marker-alt"></i> ${location}</h2>
+                        <p>Your personalized travel guide</p>
+                    </div>
                 `;
                 
-                gptData.food_recommendations.forEach(food => {
+                // Show destination info only if GPT worked
+                if (gptData.destination_info) {
                     html += `
-                        <div class="recommendation-item">
-                            <h4>${food.name}</h4>
-                            <p><strong>Cuisine:</strong> ${food.cuisine}</p>
-                            <p>${food.description}</p>
-                            <p><strong>Location:</strong> ${food.location}</p>
-                            <p><strong>Price Range:</strong> ${food.price_range}</p>
-                            <div class="tags">
-                                ${food.must_try_dishes ? food.must_try_dishes.map(dish => `<span class="tag">${dish}</span>`).join('') : ''}
+                        <div class="destination-info">
+                            <div class="info-card">
+                                <h3><i class="fas fa-clock"></i> Best Time to Visit</h3>
+                                <p>${gptData.destination_info.best_time_to_visit || 'Information not available'}</p>
+                            </div>
+                            <div class="info-card">
+                                <h3><i class="fas fa-cloud-sun"></i> Weather Info</h3>
+                                <p>${gptData.destination_info.weather_info || 'Information not available'}</p>
+                            </div>
+                            <div class="info-card">
+                                <h3><i class="fas fa-landmark"></i> Cultural Highlights</h3>
+                                <p>${gptData.destination_info.cultural_highlights || 'Information not available'}</p>
                             </div>
                         </div>
                     `;
-                });
+                }
                 
-                html += '</div>';
+                // Show GPT food recommendations only if GPT worked
+                if (gptData.food_recommendations && gptData.food_recommendations.length > 0) {
+                    html += `
+                        <div class="recommendation-section">
+                            <h3><i class="fas fa-utensils"></i> Must-Try Food & Restaurants (${gptData.food_recommendations.length} recommendations)</h3>
+                    `;
+                    
+                    gptData.food_recommendations.forEach(food => {
+                        html += `
+                            <div class="recommendation-item">
+                                <h4>${food.name}</h4>
+                                <p><strong>Cuisine:</strong> ${food.cuisine}</p>
+                                <p>${food.description}</p>
+                                <p><strong>Location:</strong> ${food.location}</p>
+                                <p><strong>Price Range:</strong> ${food.price_range}</p>
+                                <div class="tags">
+                                    ${food.must_try_dishes ? food.must_try_dishes.map(dish => `<span class="tag">${dish}</span>`).join('') : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Show other GPT recommendations only if GPT worked
+                if (gptData.experience_recommendations && gptData.experience_recommendations.length > 0) {
+                    html += `
+                        <div class="recommendation-section">
+                            <h3><i class="fas fa-star"></i> Unforgettable Experiences (${gptData.experience_recommendations.length} recommendations)</h3>
+                    `;
+                    
+                    gptData.experience_recommendations.forEach(exp => {
+                        html += `
+                            <div class="recommendation-item">
+                                <h4>${exp.name}</h4>
+                                <p><strong>Category:</strong> ${exp.category}</p>
+                                <p>${exp.description}</p>
+                                <p><strong>Duration:</strong> ${exp.duration}</p>
+                                <p><strong>Best Time:</strong> ${exp.best_time}</p>
+                                <p><strong>Pro Tips:</strong> ${exp.tips}</p>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                if (gptData.hidden_gems && gptData.hidden_gems.length > 0) {
+                    html += `
+                        <div class="recommendation-section">
+                            <h3><i class="fas fa-gem"></i> Hidden Gems (${gptData.hidden_gems.length} recommendations)</h3>
+                    `;
+                    
+                    gptData.hidden_gems.forEach(gem => {
+                        html += `
+                            <div class="recommendation-item">
+                                <h4>${gem.name}</h4>
+                                <p><strong>Type:</strong> ${gem.type}</p>
+                                <p>${gem.description}</p>
+                                <p><strong>Location:</strong> ${gem.location}</p>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                if (gptData.travel_tips && gptData.travel_tips.length > 0) {
+                    html += `
+                        <div class="tips-section">
+                            <h3><i class="fas fa-lightbulb"></i> Pro Travel Tips</h3>
+                            <ul class="tips-list">
+                                ${gptData.travel_tips.map(tip => `<li>${tip}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
             }
             
-            // Qloo Recommendations
+            // Qloo Recommendations - ALWAYS show these (even if GPT failed)
             if (data.qloo_recommendations) {
                 const qlooData = data.qloo_recommendations;
                 
@@ -518,62 +598,6 @@
                     
                     html += '</div>';
                 }
-            }
-            
-            // Experience Recommendations
-            if (gptData.experience_recommendations && gptData.experience_recommendations.length > 0) {
-                html += `
-                    <div class="recommendation-section">
-                        <h3><i class="fas fa-star"></i> Unforgettable Experiences (${gptData.experience_recommendations.length} recommendations)</h3>
-                `;
-                
-                gptData.experience_recommendations.forEach(exp => {
-                    html += `
-                        <div class="recommendation-item">
-                            <h4>${exp.name}</h4>
-                            <p><strong>Category:</strong> ${exp.category}</p>
-                            <p>${exp.description}</p>
-                            <p><strong>Duration:</strong> ${exp.duration}</p>
-                            <p><strong>Best Time:</strong> ${exp.best_time}</p>
-                            <p><strong>Pro Tips:</strong> ${exp.tips}</p>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-            }
-            
-            // Hidden Gems
-            if (gptData.hidden_gems && gptData.hidden_gems.length > 0) {
-                html += `
-                    <div class="recommendation-section">
-                        <h3><i class="fas fa-gem"></i> Hidden Gems (${gptData.hidden_gems.length} recommendations)</h3>
-                `;
-                
-                gptData.hidden_gems.forEach(gem => {
-                    html += `
-                        <div class="recommendation-item">
-                            <h4>${gem.name}</h4>
-                            <p><strong>Type:</strong> ${gem.type}</p>
-                            <p>${gem.description}</p>
-                            <p><strong>Location:</strong> ${gem.location}</p>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-            }
-            
-            // Travel Tips
-            if (gptData.travel_tips && gptData.travel_tips.length > 0) {
-                html += `
-                    <div class="tips-section">
-                        <h3><i class="fas fa-lightbulb"></i> Pro Travel Tips</h3>
-                        <ul class="tips-list">
-                            ${gptData.travel_tips.map(tip => `<li>${tip}</li>`).join('')}
-                        </ul>
-                    </div>
-                `;
             }
             
             resultsSection.innerHTML = html;
