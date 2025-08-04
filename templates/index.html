@@ -277,6 +277,15 @@
             margin-bottom: 20px;
             border: 1px solid #f5c6cb;
         }
+        
+        .partial-success-message {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #bee5eb;
+        }
 
         .success-message {
             background: #d4edda;
@@ -576,14 +585,27 @@
         
         function showError(message) {
             const resultsSection = document.getElementById('resultsSection');
-            resultsSection.innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <strong>Service Temporarily Unavailable</strong>
-                    <p>We're experiencing high demand. Please try again in a few moments.</p>
-                    <p><small>Technical details: ${message}</small></p>
-                </div>
-            `;
+            
+            // Check if it's a GPT timeout (which is actually a partial success)
+            if (message.includes('GPT API timeout') || message.includes('fallback')) {
+                resultsSection.innerHTML = `
+                    <div class="partial-success-message">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Partial Results Available</strong>
+                        <p>Some AI recommendations are temporarily unavailable, but you still have access to restaurant recommendations below.</p>
+                        <p><small>Technical details: ${message}</small></p>
+                    </div>
+                `;
+            } else {
+                resultsSection.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Service Temporarily Unavailable</strong>
+                        <p>We're experiencing high demand. Please try again in a few moments.</p>
+                        <p><small>Technical details: ${message}</small></p>
+                    </div>
+                `;
+            }
             resultsSection.style.display = 'block';
             resultsSection.scrollIntoView({ behavior: 'smooth' });
         }
