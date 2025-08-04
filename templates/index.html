@@ -445,7 +445,7 @@
             
             // Show error message if GPT failed, but don't return early
             if (gptData.error) {
-                if (gptData.error.includes('GPT API timeout') || gptData.error.includes('fallback')) {
+                if (gptData.error.includes('Qloo API temporarily unavailable') || gptData.error.includes('fallback')) {
                     html += `
                         <div class="partial-success-message">
                             <i class="fas fa-info-circle"></i>
@@ -619,8 +619,8 @@
         function showError(message) {
             const resultsSection = document.getElementById('resultsSection');
             
-            // Check if it's a GPT timeout (which is actually a partial success)
-            if (message.includes('GPT API timeout') || message.includes('fallback')) {
+            // Check if it's a Qloo API issue (which is actually a partial success)
+            if (message.includes('Qloo API temporarily unavailable') || message.includes('fallback')) {
                 resultsSection.innerHTML = `
                     <div class="partial-success-message">
                         <i class="fas fa-info-circle"></i>

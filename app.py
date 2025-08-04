@@ -205,7 +205,7 @@ def get_recommendations():
         if gpt_thread.is_alive():
             # GPT is taking too long, use fallback
             gpt_recommendations = {
-                "error": "GPT API timeout - using fallback recommendations",
+                "error": "Qloo API temporarily unavailable - using fallback recommendations",
                 "destination_info": {
                     "name": location,
                     "best_time_to_visit": "Check local tourism websites",
