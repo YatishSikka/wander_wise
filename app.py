@@ -72,69 +72,60 @@ class TravelRecommender:
     def get_gpt_recommendations(self, location, preferences, duration):
         """Get personalized recommendations using GPT"""
         prompt = f"""
-        You are a knowledgeable travel expert. Provide detailed recommendations for {location} based on the following preferences:
+        Provide quick travel tips for {location}. Duration: {duration}. Preferences: {preferences}.
         
-        Travel Duration: {duration}
-        Preferences: {preferences}
-        
-        Please provide recommendations in the following JSON format with 5-8 recommendations in each category:
+        Return JSON with 2-3 items per category:
         {{
             "destination_info": {{
                 "name": "{location}",
-                "best_time_to_visit": "string",
-                "weather_info": "string",
-                "cultural_highlights": "string"
+                "best_time_to_visit": "brief info",
+                "weather_info": "brief info", 
+                "cultural_highlights": "brief info"
             }},
             "food_recommendations": [
                 {{
-                    "name": "Restaurant/Cafe name",
-                    "cuisine": "Type of cuisine",
-                    "description": "Why it's worth visiting",
-                    "price_range": "Budget/Mid-range/Luxury",
-                    "must_try_dishes": ["dish1", "dish2", "dish3"],
-                    "location": "Area/neighborhood"
+                    "name": "Restaurant name",
+                    "cuisine": "cuisine type",
+                    "description": "brief description",
+                    "price_range": "price level",
+                    "must_try_dishes": ["dish1", "dish2"],
+                    "location": "area"
                 }}
             ],
             "experience_recommendations": [
                 {{
                     "name": "Experience name",
-                    "category": "Cultural/Adventure/Food/Nightlife/etc",
-                    "description": "What makes this experience special",
-                    "duration": "How long it takes",
-                    "best_time": "When to do it",
-                    "tips": "Pro tips for the best experience"
+                    "category": "category",
+                    "description": "brief description",
+                    "duration": "time needed",
+                    "best_time": "when to go",
+                    "tips": "quick tip"
                 }}
             ],
             "hidden_gems": [
                 {{
-                    "name": "Hidden gem name",
-                    "type": "Restaurant/Attraction/Experience",
-                    "description": "Why it's a hidden gem",
-                    "location": "Where to find it"
+                    "name": "Place name",
+                    "type": "type",
+                    "description": "brief description",
+                    "location": "location"
                 }}
             ],
-            "travel_tips": [
-                "Tip 1",
-                "Tip 2",
-                "Tip 3",
-                "Tip 4",
-                "Tip 5",
-                "Tip 6"
-            ]
+            "travel_tips": ["tip1", "tip2", "tip3"]
         }}
         
-        Make sure the recommendations are specific to {location} and consider the user's preferences and duration. Focus on authentic local experiences and must-try items. Provide 5-8 recommendations in each category to ensure fast response times.
+        Keep responses concise and specific to {location}.
         """
         
         try:
             response = self.openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a travel expert specializing in personalized travel recommendations. Always respond with valid JSON."},
+                    {"role": "system", "content": "You are a travel expert. Respond with valid JSON only."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=2000
+                temperature=0.5,
+                max_tokens=800,
+                timeout=10
             )
             
             # Parse the JSON response
@@ -171,16 +162,36 @@ def get_recommendations():
         if not location:
             return jsonify({"error": "Location is required"}), 400
         
-        # Get GPT recommendations
-        gpt_recommendations = recommender.get_gpt_recommendations(location, preferences, duration)
-        
-        # Get Qloo recommendations for restaurants only (to avoid timeout)
+        # Get Qloo recommendations first (faster)
         qloo_restaurants = recommender.get_qloo_recommendations(location, "restaurants")
         
         # Combine Qloo recommendations
         qloo_recommendations = {
             "restaurants": qloo_restaurants
         }
+        
+        # Try GPT with shorter timeout
+        try:
+            gpt_recommendations = recommender.get_gpt_recommendations(location, preferences, duration)
+        except Exception as e:
+            # If GPT fails, return fallback recommendations
+            gpt_recommendations = {
+                "error": f"GPT API temporarily unavailable: {str(e)}",
+                "destination_info": {
+                    "name": location,
+                    "best_time_to_visit": "Check local tourism websites",
+                    "weather_info": "Check weather apps for current conditions",
+                    "cultural_highlights": "Explore local attractions and museums"
+                },
+                "food_recommendations": [],
+                "experience_recommendations": [],
+                "hidden_gems": [],
+                "travel_tips": [
+                    "Always check local tourism websites for the latest information",
+                    "Consider booking popular attractions in advance",
+                    "Learn a few basic phrases in the local language"
+                ]
+            }
         
         # Combine recommendations
         combined_recommendations = {
