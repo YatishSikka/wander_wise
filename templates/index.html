@@ -579,7 +579,9 @@
             resultsSection.innerHTML = `
                 <div class="error-message">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <strong>Error:</strong> ${message}
+                    <strong>Service Temporarily Unavailable</strong>
+                    <p>We're experiencing high demand. Please try again in a few moments.</p>
+                    <p><small>Technical details: ${message}</small></p>
                 </div>
             `;
             resultsSection.style.display = 'block';

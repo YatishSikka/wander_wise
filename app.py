@@ -192,7 +192,30 @@ def get_recommendations():
         return jsonify(combined_recommendations)
         
     except Exception as e:
-        return jsonify({"error": f"Server error: {str(e)}"}), 500
+        # Return a proper JSON response even on error
+        return jsonify({
+            "gpt_recommendations": {
+                "error": f"Server temporarily unavailable: {str(e)}",
+                "destination_info": {
+                    "name": location,
+                    "best_time_to_visit": "Check local tourism websites",
+                    "weather_info": "Check weather apps for current conditions",
+                    "cultural_highlights": "Explore local attractions and museums"
+                },
+                "food_recommendations": [],
+                "experience_recommendations": [],
+                "hidden_gems": [],
+                "travel_tips": [
+                    "Always check local tourism websites for the latest information",
+                    "Consider booking popular attractions in advance",
+                    "Learn a few basic phrases in the local language"
+                ]
+            },
+            "qloo_recommendations": {
+                "restaurants": {"error": "Unable to fetch restaurant recommendations"}
+            },
+            "generated_at": datetime.now().isoformat()
+        }), 500
 
 @app.route('/api/qloo-search', methods=['GET'])
 def qloo_search():
