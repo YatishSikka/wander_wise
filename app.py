@@ -227,7 +227,7 @@ def get_recommendations():
         qloo_thread = threading.Thread(target=qloo_call)
         qloo_thread.daemon = True
         qloo_thread.start()
-        qloo_thread.join(timeout=8)  # 8 second timeout (reduced to keep total under 30s)
+        qloo_thread.join(timeout=10)  # 10 second timeout (matching Qloo function timeout)
         
         if gpt_thread.is_alive():
             # GPT is taking too long, use comprehensive fallback
